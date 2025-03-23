@@ -1,99 +1,67 @@
 import { NextResponse } from 'next/server';
-import { prisma } from '@/app/lib/prisma';
 import { z } from 'zod';
+import { prisma } from '@/app/lib/prisma';
 import { sendSMS } from '@/app/lib/sms';
-import crypto from 'crypto';
+import { createHash } from 'crypto';
 
 const phoneSchema = z.object({
-  phone: z.string()
-    .min(11, 'شماره موبایل باید ۱۱ رقم باشد')
-    .max(11, 'شماره موبایل باید ۱۱ رقم باشد')
-    .regex(/^09[0-9]{9}$/, 'شماره موبایل باید با ۰۹ شروع شود و ۱۱ رقم باشد'),
+  phoneNumber: z.string()
+    .min(11, 'شماره تلفن باید ۱۱ رقم باشد')
+    .max(11, 'شماره تلفن باید ۱۱ رقم باشد')
+    .regex(/^09\d{9}$/, 'شماره تلفن باید با ۰۹ شروع شود'),
 });
 
 // Generate a deterministic OTP based on phone number and timestamp
-function generateOTP(phone: string): string {
+function generateOTP(phoneNumber: string): string {
   const timestamp = Math.floor(Date.now() / (5 * 60 * 1000)); // 5-minute window
-  const data = `${phone}:${timestamp}`;
-  const hash = crypto.createHash('sha256').update(data).digest('hex');
-  return hash.slice(0, 6).padStart(6, '0');
+  const data = `${phoneNumber}:${timestamp}:${process.env.NEXTAUTH_SECRET}`;
+  const hash = createHash('sha256').update(data).digest('hex');
+  return hash.slice(0, 6).replace(/[^0-9]/g, '1');
 }
 
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    console.log('Received request body:', body); // Debug log
+    const { phoneNumber } = phoneSchema.parse(body);
 
-    // Validate request body
-    const result = phoneSchema.safeParse(body);
-    if (!result.success) {
-      console.log('Validation errors:', result.error.errors); // Debug log
-      return NextResponse.json(
-        { 
-          error: 'داده‌های ورودی نامعتبر است',
-          details: result.error.errors 
-        },
-        { status: 400 }
-      );
-    }
+    // Generate OTP
+    const otp = generateOTP(phoneNumber);
 
-    const { phone } = result.data;
-
-    // Bypass OTP for admin phone number
-    if (phone === '09170434697') {
-      return NextResponse.json({
-        success: true,
-        message: 'ورود موفقیت‌آمیز',
-        bypassOtp: true,
-      });
-    }
-
-    // Check if user exists
-    const user = await prisma.user.findUnique({
-      where: { phone },
-    });
-
-    if (!user) {
-      return NextResponse.json(
-        { error: 'کاربر یافت نشد' },
-        { status: 404 }
-      );
-    }
-
-    // Generate deterministic OTP
-    const otp = generateOTP(phone);
-
-    // Store OTP in database
-    await prisma.user.update({
-      where: { phone },
+    // Save OTP and phone number in database
+    await prisma.verificationToken.create({
       data: {
-        otp,
-        otpExpiresAt: new Date(Date.now() + 5 * 60 * 1000), // 5 minutes
+        identifier: phoneNumber,
+        token: otp,
+        expires: new Date(Date.now() + 5 * 60 * 1000), // 5 minutes
       },
     });
 
     // Send OTP via SMS
-    await sendSMS(phone, `کد تایید شما: ${otp}`);
+    const message = `کد تایید شما: ${otp}\nفیزیک کنکور`;
+    const sent = await sendSMS(phoneNumber, message);
 
-    return NextResponse.json({
-      success: true,
-      message: 'کد تایید ارسال شد',
-    });
-  } catch (error) {
-    console.error('Error in send-otp route:', error); // Debug log
-    
-    if (error instanceof z.ZodError) {
+    if (!sent) {
       return NextResponse.json(
-        { 
-          error: 'داده‌های ورودی نامعتبر است',
-          details: error.errors 
-        },
-        { status: 400 }
+        { message: 'خطا در ارسال پیامک' },
+        { status: 500 }
       );
     }
 
     return NextResponse.json(
-      { error: 'خطا در ارسال کد تایید' },
+      { message: 'کد تایید ارسال شد' },
+      { status: 200 }
+    );
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return NextResponse.json(
+        { message: error.errors[0].message },
+        { status: 400 }
+      );
+    }
+
+    console.error('Error in send-otp:', error);
+    return NextResponse.json(
+      { message: 'خطای سرور' },
       { status: 500 }
     );
   }
