@@ -1,7 +1,6 @@
-interface MeliPayamakResponse {
-  Value: string;
-  RetStatus: number;
-  StrRetStatus: string;
+interface SMSResponse {
+  status: number;
+  message: string;
 }
 
 export async function sendSMS(phone: string, message: string): Promise<boolean> {
@@ -11,27 +10,22 @@ export async function sendSMS(phone: string, message: string): Promise<boolean> 
   }
 
   try {
-    const username = process.env.MELIPAYAMAK_USERNAME;
-    const password = process.env.MELIPAYAMAK_PASSWORD;
-    const from = process.env.MELIPAYAMAK_NUMBER;
+    const apiKey = process.env.SMS_API_KEY;
 
-    if (!username || !password || !from) {
-      console.error('MeliPayamak credentials not configured');
+    if (!apiKey) {
+      console.error('SMS API key not configured');
       return false;
     }
 
-    const response = await fetch('https://api.payamak-panel.com/post/Send.asmx/SendSimpleSMS2', {
+    const response = await fetch('https://api.payamak-panel.com/post/send.asmx/SendByApikey', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/x-www-form-urlencoded',
       },
       body: new URLSearchParams({
-        username,
-        password,
+        apikey: apiKey,
         to: phone,
-        from,
         text: message,
-        isflash: 'false'
       })
     });
 
@@ -39,10 +33,13 @@ export async function sendSMS(phone: string, message: string): Promise<boolean> 
       throw new Error(`HTTP error! status: ${response.status}`);
     }
 
-    const data: MeliPayamakResponse = await response.json();
+    const data: SMSResponse = await response.json();
     
-    // RetStatus 1 means success
-    return data.RetStatus === 1;
+    // Log response for debugging
+    console.log('SMS API Response:', data);
+    
+    // Check if the message was sent successfully
+    return data.status === 1 || data.status === 200;
   } catch (error) {
     console.error('SMS sending failed:', error);
     return false;
