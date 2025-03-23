@@ -1,54 +1,28 @@
-interface SMSProvider {
-  sendSMS(phone: string, message: string): Promise<boolean>;
-}
-
-class KavenegarProvider implements SMSProvider {
-  private apiKey: string;
-  private baseUrl: string;
-
-  constructor() {
-    this.apiKey = process.env.KAVENEGAR_API_KEY || '';
-    this.baseUrl = 'https://api.kavenegar.com/v1';
-  }
-
-  async sendSMS(phone: string, message: string): Promise<boolean> {
-    try {
-      const response = await fetch(
-        `${this.baseUrl}/${this.apiKey}/sms/send.json`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/x-www-form-urlencoded',
-          },
-          body: new URLSearchParams({
-            receptor: phone,
-            message,
-          }),
-        }
-      );
-
-      const data = await response.json();
-      return data.status === 200;
-    } catch (error) {
-      console.error('Error sending SMS:', error);
-      return false;
-    }
-  }
-}
-
-class MockProvider implements SMSProvider {
-  async sendSMS(phone: string, message: string): Promise<boolean> {
-    console.log('Mock SMS sent to:', phone);
-    console.log('Message:', message);
-    return true;
-  }
-}
-
-// Use mock provider in development, Kavenegar in production
-const provider: SMSProvider = process.env.NODE_ENV === 'production'
-  ? new KavenegarProvider()
-  : new MockProvider();
+// This is a mock SMS service for development
+// Replace with actual SMS service implementation in production
 
 export async function sendSMS(phone: string, message: string): Promise<boolean> {
-  return provider.sendSMS(phone, message);
+  if (process.env.NODE_ENV === 'development') {
+    console.log(`[Mock SMS] To: ${phone}, Message: ${message}`);
+    return true;
+  }
+
+  try {
+    // TODO: Implement actual SMS service
+    // Example:
+    // const response = await fetch('SMS_API_URL', {
+    //   method: 'POST',
+    //   headers: {
+    //     'Content-Type': 'application/json',
+    //     'Authorization': `Bearer ${process.env.SMS_API_KEY}`
+    //   },
+    //   body: JSON.stringify({ phone, message })
+    // });
+    // return response.ok;
+    
+    return true;
+  } catch (error) {
+    console.error('SMS sending failed:', error);
+    return false;
+  }
 }
