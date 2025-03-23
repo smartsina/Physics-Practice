@@ -1,0 +1,46 @@
+{
+  "name": "physics-practice",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "prisma:generate": "prisma generate",
+    "prisma:migrate": "prisma migrate dev",
+    "prisma:studio": "prisma studio",
+    "db:seed": "ts-node prisma/seed.ts"
+  },
+  "dependencies": {
+    "@auth/core": "0.34.2",
+    "@prisma/client": "^6.5.0",
+    "@tabler/icons-react": "^2.40.0",
+    "@tremor/react": "^3.11.1",
+    "bcryptjs": "^2.4.3",
+    "jose": "^5.2.0",
+    "next": "14.0.4",
+    "next-auth": "^4.24.11",
+    "react": "^18",
+    "react-dom": "^18",
+    "zod": "^3.22.4"
+  },
+  "devDependencies": {
+    "@types/bcryptjs": "^2.4.6",
+    "@types/node": "^20",
+    "@types/react": "^18",
+    "@types/react-dom": "^18",
+    "autoprefixer": "^10.0.1",
+    "@eslint/config-array": "^2.1.0",
+    "@eslint/object-schema": "^1.0.0",
+    "eslint": "^8.57.0",
+    "eslint-config-next": "14.0.4",
+    "glob": "^10.3.10",
+    "postcss": "^8",
+    "prisma": "^6.5.0",
+    "rimraf": "^5.0.5",
+    "tailwindcss": "^3.3.0",
+    "ts-node": "^10.9.1",
+    "typescript": "^5"
+  }
+}
